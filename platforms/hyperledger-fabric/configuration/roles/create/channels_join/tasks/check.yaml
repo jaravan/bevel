@@ -15,7 +15,8 @@
   vars:
     component_type: "Job"
     namespace: "{{ participant.name | lower }}-net"
-    component_name: "{{ channel_name }}-{{ participant.name }}-{{ peer.name }}"
+    component_name: "joinchannel-{{ peer.name }}-{{ channel_name }}"
+    kubernetes: "{{ org.k8s }}"
   loop: "{{ participant.peers }}"
   loop_control:
     loop_var: peer
@@ -28,6 +29,7 @@
   vars:
     namespace: "{{ participant.name | lower }}-net"
     pod_name: "{{ peer.name }}-0"
+    kubernetes: "{{ org.k8s }}"
   loop: "{{ participant.peers }}"
   loop_control:
     loop_var: peer

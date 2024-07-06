@@ -13,7 +13,7 @@
     state: absent
     kubeconfig: "{{ kubernetes.config_file }}"
     context: "{{ kubernetes.context }}"
-  ignore_errors: true
+  ignore_errors: yes
 
 # Delete main channel
 - name: Delete main channel
@@ -24,4 +24,4 @@
     state: absent
     kubeconfig: "{{ kubernetes.config_file }}"
     context: "{{ kubernetes.context }}"
-  ignore_errors: true
+  ignore_errors: yes

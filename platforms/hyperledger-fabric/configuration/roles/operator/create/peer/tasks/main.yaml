@@ -17,7 +17,7 @@
   until: this.status == 200
   retries: "{{ network.env.retry_count }}"
   delay: 20
-  ignore_errors: true
+  ignore_errors: yes
 
 # Create peer node
 - name: "Create peer node"

@@ -7,44 +7,37 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: joinchannel-{{ .Release.Name }}
-  namespace: {{ .Release.Namespace }}
-  annotations:
-    "helm.sh/hook": post-install
-    "helm.sh/hook-weight": "0"
-    "helm.sh/hook-delete-policy": "before-hook-creation"
+  name: joinchannel-{{ $.Values.peer.name }}-{{ $.Values.channel.name }}
+  namespace: {{ $.Values.metadata.namespace }}
   labels:
-    app: {{ .Release.Name }}
-    app.kubernetes.io/name: channel-join-{{ .Release.Name }}
-    app.kubernetes.io/component: fabric-channel-join-job
-    app.kubernetes.io/part-of: {{ include "fabric-channel-join.fullname" . }}
-    app.kubernetes.io/namespace: {{ .Release.Namespace }}
-    app.kubernetes.io/release: {{ .Release.Name }}
-    app.kubernetes.io/managed-by: helm
+    app: joinchannel-{{ $.Values.peer.name }}-{{ $.Values.channel.name }}
+    app.kubernetes.io/name: joinchannel-{{ $.Values.peer.name }}-{{ $.Values.channel.name }}
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    {{- include "labels.custom" . | nindent 2 }}
 spec:
   backoffLimit: 6
   template:
     metadata:
       labels:
-        app: {{ .Release.Name }}
-        app.kubernetes.io/name: channel-join-{{ .Release.Name }}
-        app.kubernetes.io/component: fabric-channel-join-job
-        app.kubernetes.io/part-of: {{ include "fabric-channel-join.fullname" . }}
-        app.kubernetes.io/namespace: {{ .Release.Namespace }}
-        app.kubernetes.io/release: {{ .Release.Name }}
-        app.kubernetes.io/managed-by: helm
+        app: joinchannel-{{ $.Values.peer.name }}-{{ $.Values.channel.name }}
+        app.kubernetes.io/name: joinchannel-{{ $.Values.peer.name }}-{{ $.Values.channel.name }}
+        helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+        app.kubernetes.io/managed-by: {{ .Release.Service }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
     spec:
       restartPolicy: "OnFailure"
-      serviceAccountName: {{ .Values.global.serviceAccountName }}
-      {{- if .Values.image.pullSecret }}
+      serviceAccountName: {{ $.Values.vault.serviceaccountname }}
+      {{- if .Values.vault.imagesecretname }}
       imagePullSecrets:
-        - name: {{ .Values.image.pullSecret }}
+        - name: {{ $.Values.vault.imagesecretname }}
       {{- end }}
       volumes:
-      {{ if .Values.global.vault.tls  }}
+      {{ if .Values.vault.tls  }}
       - name: vaultca
         secret:
-          secretName: {{ .Values.global.vault.tls }}
+          secretName: {{ $.Values.vault.tls }}
           items:
           - key: ca.crt.pem
             path: ca-certificates.crt  # curl expects certs to be in /etc/ssl/certs/ca-certificates.crt
@@ -55,80 +48,50 @@ spec:
       - name: scripts-volume
         configMap:
           name: bevel-vault-script
-      - name: orderer-tls-cacert
-        configMap:
-          name: {{ include "fabric-channel-join.orderercrt" . }}
-          defaultMode: 0775
-          items:
-            - key: cacert
-              path: orderer.crt
       initContainers:
       - name: certificates-init
-        image: {{ .Values.image.alpineUtils }}
+        image: {{ $.Values.metadata.images.alpineutils }}
         imagePullPolicy: IfNotPresent
         env:
         - name: VAULT_ADDR
-          value: {{ .Values.global.vault.address }}
-        - name: VAULT_APP_ROLE
-          value: {{ .Values.global.vault.role }}
+          value: {{ $.Values.vault.address }}
         - name: KUBERNETES_AUTH_PATH
-          value: {{ .Values.global.vault.authPath }}
-        - name: VAULT_SECRET_ENGINE
-          value: "{{ .Values.global.vault.secretEngine }}"
-        - name: VAULT_SECRET_PREFIX
-          value: "{{ .Values.global.vault.secretPrefix }}"
-        - name: VAULT_TYPE
-          value: "{{ .Values.global.vault.type }}"
+          value: {{ $.Values.vault.authpath }}
+        - name: VAULT_APP_ROLE
+          value: {{ $.Values.vault.role }}
+        - name: VAULT_PEER_SECRET_PREFIX
+          value: "{{ $.Values.vault.adminsecretprefix }}"
+        - name: VAULT_ORDERER_SECRET_PREFIX
+          value: "{{ $.Values.vault.orderersecretprefix }}"
         - name: MOUNT_PATH
           value: /secret
+        - name: VAULT_TYPE
+          value: "{{ $.Values.vault.type }}"
         command: ["sh", "-c"]
         args:
         - |-
           #!/usr/bin/env sh
-{{- if eq .Values.global.vault.type "hashicorp" }}
-
           . /scripts/bevel-vault.sh
+
+          # Calling a function to retrieve the vault token.
           vaultBevelFunc "init"
 
-          function getAdminMspSecret {
-            KEY=$1
+          echo "Getting Orderer TLS certificates from Vault."
+          vaultBevelFunc "readJson" "${VAULT_ORDERER_SECRET_PREFIX}/tls"
 
-            echo "Getting MSP certificates from Vault."
-            vaultBevelFunc "readJson" "${VAULT_SECRET_ENGINE}/${VAULT_SECRET_PREFIX}/users/${KEY}"
+          TLS_CA_CERT=$(echo ${VAULT_SECRET} | jq -r '.["ca.crt"]')
+          OUTPUT_PATH="${MOUNT_PATH}/orderer/tls"
+          mkdir -p ${OUTPUT_PATH}
+          echo "${TLS_CA_CERT}" >> ${OUTPUT_PATH}/ca.crt
 
-            ADMINCERT=$(echo ${VAULT_SECRET} | jq -r '.["admincerts"]')
-            CACERTS=$(echo ${VAULT_SECRET} | jq -r '.["cacerts"]')
-            KEYSTORE=$(echo ${VAULT_SECRET} | jq -r '.["keystore"]')
-            SIGNCERTS=$(echo ${VAULT_SECRET} | jq -r '.["signcerts"]')
-            TLSCACERTS=$(echo ${VAULT_SECRET} | jq -r '.["tlscacerts"]')
+          echo "Getting MSP certificates from Vault."
+          vaultBevelFunc "readJson" "${VAULT_PEER_SECRET_PREFIX}/msp"
 
-            echo "${ADMINCERT}" > ${OUTPUT_PATH}/admincerts/admin.crt
-            echo "${CACERTS}" > ${OUTPUT_PATH}/cacerts/ca.crt
-            echo "${KEYSTORE}" > ${OUTPUT_PATH}/keystore/server.key
-            echo "${SIGNCERTS}" > ${OUTPUT_PATH}/signcerts/server.crt
-            echo "${TLSCACERTS}" > ${OUTPUT_PATH}/tlscacerts/tlsca.crt
-          }
-
-{{- else }}
-
-          function getAdminMspSecret {
-            KEY=$1
-            KUBENETES_SECRET=$(kubectl get secret ${KEY} --namespace {{ .Release.Namespace }} -o json)
-
-            ADMINCERT=$(echo ${KUBENETES_SECRET} | jq -r '.data.admincerts'  | base64 -d)
-            CACERTS=$(echo ${KUBENETES_SECRET} | jq -r '.data.cacerts'  | base64 -d)
-            KEYSTORE=$(echo ${KUBENETES_SECRET} | jq -r '.data.keystore'  | base64 -d)
-            SIGNCERTS=$(echo ${KUBENETES_SECRET} | jq -r '.data.signcerts'  | base64 -d)
-            TLSCACERTS=$(echo ${KUBENETES_SECRET} | jq -r '.data.tlscacerts'  | base64 -d)
-
-            echo "${ADMINCERT}" > ${OUTPUT_PATH}/admincerts/admin.crt
-            echo "${CACERTS}" > ${OUTPUT_PATH}/cacerts/ca.crt
-            echo "${KEYSTORE}" > ${OUTPUT_PATH}/keystore/server.key
-            echo "${SIGNCERTS}" > ${OUTPUT_PATH}/signcerts/server.crt
-            echo "${TLSCACERTS}" > ${OUTPUT_PATH}/tlscacerts/tlsca.crt      
-          }
-
-{{- end }}
+          ADMINCERT=$(echo ${VAULT_SECRET} | jq -r '.["admincerts"]')
+          CACERTS=$(echo ${VAULT_SECRET} | jq -r '.["cacerts"]')
+          KEYSTORE=$(echo ${VAULT_SECRET} | jq -r '.["keystore"]')
+          SIGNCERTS=$(echo ${VAULT_SECRET} | jq -r '.["signcerts"]')
+          TLSCACERTS=$(echo ${VAULT_SECRET} | jq -r '.["tlscacerts"]')
 
           OUTPUT_PATH="${MOUNT_PATH}/admin/msp"
           mkdir -p ${OUTPUT_PATH}/admincerts
@@ -136,9 +99,14 @@ spec:
           mkdir -p ${OUTPUT_PATH}/keystore
           mkdir -p ${OUTPUT_PATH}/signcerts
           mkdir -p ${OUTPUT_PATH}/tlscacerts
-          getAdminMspSecret admin-msp
+
+          echo "${ADMINCERT}" >> ${OUTPUT_PATH}/admincerts/admin.crt
+          echo "${CACERTS}" >> ${OUTPUT_PATH}/cacerts/ca.crt
+          echo "${KEYSTORE}" >> ${OUTPUT_PATH}/keystore/server.key
+          echo "${SIGNCERTS}" >> ${OUTPUT_PATH}/signcerts/server.crt
+          echo "${TLSCACERTS}" >> ${OUTPUT_PATH}/tlscacerts/tlsca.crt
         volumeMounts:
-        {{ if .Values.global.vault.tls  }}
+        {{ if .Values.vault.tls  }}
         - name: vaultca
           mountPath: "/etc/ssl/certs/"
           readOnly: true
@@ -150,7 +118,7 @@ spec:
           subPath: bevel-vault.sh       
       containers:
       - name: joinchannel
-        image: {{ .Values.image.fabricTools }}:{{ .Values.global.version }} 
+        image: {{ $.Values.metadata.images.fabrictools }}
         imagePullPolicy: IfNotPresent
         stdin: true
         tty: true
@@ -177,11 +145,8 @@ spec:
         workingDir: /opt/gopath/src/github.com/hyperledger/fabric/peer
         envFrom:
         - configMapRef:
-            name: {{ .Release.Name }}-config
+            name: joinchannel-{{ $.Values.channel.name }}-{{ $.Values.peer.name }}-config
         volumeMounts:
         - name: certificates
           mountPath: /opt/gopath/src/github.com/hyperledger/fabric/crypto
           readOnly: true
-        - name: orderer-tls-cacert
-          mountPath: /opt/gopath/src/github.com/hyperledger/fabric/orderer/tls/orderer.crt
-          subPath: orderer.crt

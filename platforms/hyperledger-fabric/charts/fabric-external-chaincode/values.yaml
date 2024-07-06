@@ -74,8 +74,3 @@ service:
       #Provide a cluster IP port for grpc service to be exposed
       #Eg. clusteripport: 7051
       clusteripport: 7052
-
-labels:
-  service: []
-  pvc: []
-  deployment: []

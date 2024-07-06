@@ -3,19 +3,9 @@
 set -x
 
 CURRENT_DIR=${PWD}
-NETWORK_VERSION="{{ version }}"
 
-if [ "$NETWORK_VERSION" != "2.5.4" ]; then
-    echo "installing jq "
-    . /scripts/package-manager.sh
-    packages_to_install="jq"
-    install_packages "$packages_to_install"
-else
-    echo "installing jq and wget"
-    . /scripts/package-manager.sh
-    packages_to_install="jq wget"
-    install_packages "$packages_to_install"
-fi
+echo "installing jq "
+apt-get install -y jq
 echo "installing configtxlator"
 mkdir temp
 cd temp/
@@ -27,16 +17,11 @@ rm -r temp
 
 configtxlator proto_decode --input {{ channel_name }}_config_block.pb --type common.Block | jq .data.data[0].payload.data.config > {{ channel_name }}_config_block.json
 
-if [ "$NETWORK_VERSION" != "2.5.4" ]; then
-    jq -s '.[0] * {"channel_group":{"groups":{"Orderer":{"groups": {"{{ component_name }}MSP":.[1]}}}}}' {{ channel_name }}_config_block.json ./config.json > config1.json
-    jq -s '.[0] * {"channel_group":{"groups":{"Application":{"groups": {"{{ component_name }}MSP":.[1]}}}}}' config1.json ./config.json > config2.json
-    cat config2.json | jq '.channel_group.groups.Orderer.values.ConsensusType.value.metadata.consenters += ['$(cat ./orderer-tls)']' > config3.json
-    cat config3.json | jq '.channel_group.values.OrdererAddresses.value.addresses += ['$(cat ./orderer)'] ' > {{ channel_name }}_modified_config.json
-else
-    jq -s '.[0] * {"channel_group":{"groups":{"Orderer":{"groups": {"{{ component_name }}MSP":.[1]}}}}}' {{ channel_name }}_config_block.json ./config.json > config1.json
-    cat config1.json | jq '.channel_group.groups.Orderer.values.ConsensusType.value.metadata.consenters += ['$(cat ./orderer-tls)']' > config2.json
-    cat config2.json | jq '.channel_group.values.OrdererAddresses.value.addresses += ['$(cat ./orderer)'] ' > {{ channel_name }}_modified_config.json
-fi
+jq -s '.[0] * {"channel_group":{"groups":{"Orderer":{"groups": {"{{ component_name }}MSP":.[1]}}}}}' {{ channel_name }}_config_block.json ./config.json > config1.json
+jq -s '.[0] * {"channel_group":{"groups":{"Application":{"groups": {"{{ component_name }}MSP":.[1]}}}}}' config1.json ./config.json > config2.json
+cat config2.json | jq '.channel_group.groups.Orderer.values.ConsensusType.value.metadata.consenters += ['$(cat ./orderer-tls)']' > config3.json
+cat config3.json | jq '.channel_group.values.OrdererAddresses.value.addresses += ['$(cat ./orderer)'] ' > {{ channel_name }}_modified_config.json
+
 echo "converting the channel_config.json and channel_modified_config.json to .pb files"
 configtxlator proto_encode --input {{ channel_name }}_config_block.json --type common.Config --output {{ channel_name }}_config.pb
 configtxlator proto_encode --input {{ channel_name }}_modified_config.json --type common.Config --output {{ channel_name }}_modified_config.pb
