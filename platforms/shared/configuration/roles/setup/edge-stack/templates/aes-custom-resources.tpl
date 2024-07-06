@@ -23,7 +23,7 @@ apiVersion: getambassador.io/v3alpha1
 kind: Module
 metadata:
   name: ambassador-module
-  namespace: {{ proxy_namespace }}
+  namespace: ambassador
 spec:
   config:
     use_proxy_proto: true

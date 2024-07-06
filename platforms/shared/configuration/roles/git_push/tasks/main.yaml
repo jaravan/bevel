@@ -28,8 +28,9 @@
   when: 
   - gitops.git_protocol is defined 
   - gitops.git_protocol == "ssh"
-  ignore_errors: true
-
+  ignore_errors: yes
+  tags:
+    - notest
 
 # Git push the new files, reset config files
 - name: "Execute git push for https"
@@ -46,7 +47,9 @@
   
   register: GIT_OUTPUT
   when: gitops.git_protocol is not defined or gitops.git_protocol == "https"
-  ignore_errors: true
+  ignore_errors: yes
+  tags:
+    - notest
 
 # Display output of shell excution
 - name: "stdout for SSH gitpush"
@@ -55,6 +58,8 @@
   when: 
   - gitops.git_protocol is defined 
   - gitops.git_protocol == "ssh"
+  tags:
+    - notest
 
 - name: "stderr for SSH gitpush"
   debug:
@@ -62,15 +67,21 @@
   when: 
   - gitops.git_protocol is defined 
   - gitops.git_protocol == "ssh"
+  tags:
+    - notest
 
 # Display output of shell excution
 - name: "stdout for gitpush"
   debug:
     msg: "{{ GIT_OUTPUT.stdout.split('\n') }}"
   when: gitops.git_protocol is not defined or gitops.git_protocol == "https"
+  tags:
+    - notest
 
 # Display error of shell task
 - name: "stderr for git_push"
   debug:
     msg: "{{ GIT_OUTPUT.stderr.split('\n') }}"
   when: gitops.git_protocol is not defined or gitops.git_protocol == "https"
+  tags:
+    - notest
