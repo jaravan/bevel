@@ -2,7 +2,7 @@
 global:
   serviceAccountName: vault-auth
   cluster:
-    provider: azure
+    provider: minikube
     cloudNativeServices: false
   vault:
     type: kubernetes
@@ -18,3 +18,8 @@ server:
   adminUsername: supplychain-admin
   adminPassword: supplychain-adminpw
   subject: "/C=GB/ST=London/L=London/O=Orderer"
+
+# +> IA 
+image:
+  alpineUtils: jaravan/bevel-alpine:latest
+# <+ IA 

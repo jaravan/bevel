@@ -1,12 +1,13 @@
 #helm install pee0-carrier -f values/noproxy-and-novault/peer.yaml -n carrier-net fabric-peer
 global:
-  version: 2.5.4
+  # version: 2.5.4
+  version: 2.2.2
   serviceAccountName: vault-auth
   vault:
     type: kubernetes
 
   cluster:
-    provider: azure
+    provider: minikube 
     cloudNativeServices: false
 
   proxy:
@@ -49,3 +50,8 @@ peer:
     username: supplychain-user
     password: supplychain-userpw
   upgrade: false
+
+image:
+  # couchdb: ghcr.io/hyperledger/bevel-fabric-couchdb
+  # peer: ghcr.io/hyperledger/bevel-fabric-peer
+  alpineUtils: jaravan/bevel-alpine:latest

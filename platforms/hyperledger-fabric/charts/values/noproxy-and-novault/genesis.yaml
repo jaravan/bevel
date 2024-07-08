@@ -1,9 +1,10 @@
 #helm install ca-certs -f values/noproxy-and-novault/genesis.yaml -n supplychain-net fabric-genesis
 global:
-  version: 2.5.4
+  # version: 2.5.4
+  version: 2.2.2
   serviceAccountName: vault-auth
   cluster:
-    provider: azure
+    provider: minikube
     cloudNativeServices: false
   vault:
     type: kubernetes
@@ -43,3 +44,6 @@ channels:
 
 settings:
   removeConfigMapOnDelete: true
+
+image:
+  alpineUtils: jaravan/bevel-alpine:latest

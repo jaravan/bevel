@@ -10,7 +10,7 @@
 # The `minikube` value specifies that the StorageClass will be used for provisioning PersistentVolumes on Minikube.
 global:
   cluster:
-    provider: aws  # choose from: minikube | aws | azure | gcp
+    provider: minikube  # choose from: minikube | aws | azure | gcp
 
 # This "provisioner" is an optional field.
 # Fill it only if you want to use a specific provisioner of your choice. 

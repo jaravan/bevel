@@ -1,12 +1,13 @@
 #helm install pee0-carrier -f values/noproxy-and-novault/peer.yaml -n carrier-net fabric-peer
 global:
-  version: 2.5.4
+  # version: 2.5.4
+  version: 2.2.2
   serviceAccountName: vault-auth
   vault:
     type: kubernetes
 
   cluster:
-    provider: azure
+    provider: minikube
     cloudNativeServices: false
 
   proxy:
@@ -50,3 +51,6 @@ peer:
     username: carrier-user
     password: carrier-userpw
   upgrade: false
+
+image:
+  alpineUtils: jaravan/bevel-alpine:latest

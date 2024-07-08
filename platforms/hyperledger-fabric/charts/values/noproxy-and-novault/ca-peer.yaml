@@ -2,7 +2,7 @@
 global:
   serviceAccountName: vault-auth
   cluster:
-    provider: azure
+    provider: minikube # +- IA
     cloudNativeServices: false
   vault:
     type: kubernetes
@@ -18,3 +18,7 @@ server:
   adminUsername: carrier-admin
   adminPassword: carrier-adminpw
   subject: "/C=GB/ST=London/L=London/O=Carrier"
+# +> IA 
+image:
+  alpineUtils: jaravan/bevel-alpine:latest
+# <+ IA 

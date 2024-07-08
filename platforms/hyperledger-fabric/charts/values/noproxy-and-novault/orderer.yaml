@@ -1,12 +1,13 @@
 #helm install orderer1 -f values/noproxy-and-novault/orderer.yaml -n supplychain-net fabric-orderernode
 global:
-  version: 2.5.4
+  # version: 2.5.4
+  version: 2.2.2 # +- IA 
   serviceAccountName: vault-auth
   vault:
     type: kubernetes
 
   cluster:
-    provider: azure
+    provider: minikube # +- IA 
     cloudNativeServices: false
   
   proxy:
@@ -35,3 +36,6 @@ orderer:
   logLevel: info
   localMspId: supplychainMSP
   tlsstatus: true
+
+image:
+  alpineUtils: jaravan/bevel-alpine:latest
